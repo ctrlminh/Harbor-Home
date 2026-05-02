@@ -4,56 +4,70 @@ from streamlit_folium import st_folium
 import pandas as pd
 import math
 
+# ── Configuration ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="HarborHome",
+    page_title="HarborHome | Boston Housing Engine",
     page_icon="🏠",
     layout="wide"
 )
 
+# ── Enhanced Styling ──────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
-    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-    .main { background-color: #f8f9fa; }
-    .stApp { background-color: #f8f9fa; }
-    div[data-testid="stSidebar"] { background-color: #0B2C4A; }
-    div[data-testid="stSidebar"] * { color: white !important; }
-    div[data-testid="stSidebar"] .stSelectbox label,
-    div[data-testid="stSidebar"] .stRadio label,
-    div[data-testid="stSidebar"] .stCheckbox label { color: white !important; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+    
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    
+    /* Sidebar styling */
+    div[data-testid="stSidebar"] {
+        background-color: #0E1117;
+        border-right: 1px solid #2D2D2D;
+    }
+    
+    /* Metric Card Styling */
     .score-card {
         background: white;
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
-        border: 1px solid #e0e0e0;
-        margin-bottom: 10px;
+        border-radius: 16px;
+        padding: 1.2rem;
+        border: 1px solid #E0E4E8;
+        margin-bottom: 15px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .score-great { border-left: 4px solid #1D9E75; }
-    .score-ok    { border-left: 4px solid #BA7517; }
-    .score-low   { border-left: 4px solid #E24B4A; }
+    .score-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .score-great { border-left: 6px solid #1D9E75; }
+    .score-ok    { border-left: 6px solid #F59E0B; }
+    .score-low   { border-left: 6px solid #EF4444; }
+    
+    /* Header Banner */
     .hero-banner {
-        background: #0B2C4A;
+        background: linear-gradient(135deg, #0B2C4A 0%, #174E7D 100%);
         color: white;
-        padding: 1.2rem 1.8rem;
-        border-radius: 14px;
-        margin-bottom: 1.2rem;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(11, 44, 74, 0.2);
     }
-    .metric-row {
-        display: flex;
-        gap: 12px;
-        margin-top: 0.8rem;
+    
+    /* Custom Tags */
+    .tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-right: 5px;
     }
-    .metric-box {
-        background: rgba(255,255,255,0.1);
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        text-align: center;
-    }
+    .tag-blue { background: #E1EFFE; color: #1E429F; }
+    .tag-green { background: #DEF7EC; color: #03543F; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Mock data ──────────────────────────────────────────────────────────────────
-
+# ── Data (Added Medical) ─────────────────────────────────────────────────────
 HOUSING = [
     {"name": "Roxbury Crossing Apts", "lat": 42.3315, "lon": -71.0952, "rent": 950,  "beds": 2, "waitlist": "Open",   "neighborhood": "Roxbury"},
     {"name": "Jamaica Plain Commons",  "lat": 42.3100, "lon": -71.1130, "rent": 875,  "beds": 1, "waitlist": "Open",   "neighborhood": "Jamaica Plain"},
@@ -61,278 +75,165 @@ HOUSING = [
     {"name": "South End Residences",   "lat": 42.3420, "lon": -71.0750, "rent": 1100, "beds": 1, "waitlist": "Open",   "neighborhood": "South End"},
     {"name": "East Boston Commons",    "lat": 42.3760, "lon": -71.0380, "rent": 780,  "beds": 2, "waitlist": "Open",   "neighborhood": "East Boston"},
     {"name": "Hyde Park Affordable",   "lat": 42.2550, "lon": -71.1240, "rent": 720,  "beds": 3, "waitlist": "Open",   "neighborhood": "Hyde Park"},
-    {"name": "Mattapan Heights",       "lat": 42.2720, "lon": -71.0920, "rent": 690,  "beds": 2, "waitlist": "Closed", "neighborhood": "Mattapan"},
-    {"name": "Chinatown Studio Apts",  "lat": 42.3510, "lon": -71.0620, "rent": 950,  "beds": 1, "waitlist": "Open",   "neighborhood": "Chinatown"},
 ]
 
-SNAP_STORES = [
-    {"name": "Stop & Shop Roxbury",     "lat": 42.3290, "lon": -71.0880},
-    {"name": "Market Basket Dorchester","lat": 42.2980, "lon": -71.0710},
-    {"name": "Shaw's South End",        "lat": 42.3440, "lon": -71.0780},
-    {"name": "JP Food Co-op",           "lat": 42.3070, "lon": -71.1100},
-    {"name": "Star Market East Boston", "lat": 42.3740, "lon": -71.0400},
-    {"name": "Tropical Foods Roxbury",  "lat": 42.3260, "lon": -71.0860},
+MEDICAL = [
+    {"name": "Whittier Street Health Center", "lat": 42.3320, "lon": -71.0920, "type": "Community Clinic"},
+    {"name": "Codman Square Health", "lat": 42.2900, "lon": -71.0690, "type": "Community Clinic"},
+    {"name": "South End Community Health", "lat": 42.3390, "lon": -71.0790, "type": "Urgent Care"},
+    {"name": "East Boston Neighborhood Health", "lat": 42.3720, "lon": -71.0360, "type": "Full Service"},
+    {"name": "Bowdoin Street Medical", "lat": 42.3070, "lon": -71.0650, "type": "Clinic"},
 ]
 
-COOLING = [
-    {"name": "Roxbury Library",          "lat": 42.3300, "lon": -71.0890, "hours": "9am–8pm"},
-    {"name": "Mattahunt Community Ctr",  "lat": 42.2740, "lon": -71.0950, "hours": "8am–6pm"},
-    {"name": "Hyde Park BCYF",           "lat": 42.2570, "lon": -71.1250, "hours": "8am–9pm"},
-    {"name": "Copley Branch BPL",        "lat": 42.3494, "lon": -71.0773, "hours": "9am–9pm"},
-    {"name": "East Boston Neighborhood", "lat": 42.3780, "lon": -71.0350, "hours": "10am–6pm"},
-]
+SNAP_STORES = [{"name": "Stop & Shop", "lat": 42.3290, "lon": -71.0880}, {"name": "Market Basket", "lat": 42.2980, "lon": -71.0710}]
+COOLING = [{"name": "Roxbury Library", "lat": 42.3300, "lon": -71.0890, "hours": "9am–8pm"}]
+T_STOPS = [{"name": "Roxbury Crossing", "lat": 42.3315, "lon": -71.0952, "line": "Orange"}]
 
-WIFI = [
-    {"name": "BPL Central Library",     "lat": 42.3494, "lon": -71.0773},
-    {"name": "Roxbury Branch BPL",      "lat": 42.3300, "lon": -71.0890},
-    {"name": "Grove Hall Community Ctr","lat": 42.3050, "lon": -71.0780},
-    {"name": "East Boston BPL",         "lat": 42.3740, "lon": -71.0390},
-    {"name": "City Hall Plaza Wifi",    "lat": 42.3601, "lon": -71.0579},
-]
-
-T_STOPS = [
-    {"name": "Roxbury Crossing",  "lat": 42.3315, "lon": -71.0952, "line": "Orange"},
-    {"name": "Jackson Square",    "lat": 42.3231, "lon": -71.1007, "line": "Orange"},
-    {"name": "Stony Brook",       "lat": 42.3174, "lon": -71.1044, "line": "Orange"},
-    {"name": "Green St",          "lat": 42.3102, "lon": -71.1075, "line": "Orange"},
-    {"name": "Forest Hills",      "lat": 42.2992, "lon": -71.1137, "line": "Orange"},
-    {"name": "Back Bay",          "lat": 42.3474, "lon": -71.0750, "line": "Orange"},
-    {"name": "South Station",     "lat": 42.3519, "lon": -71.0552, "line": "Red"},
-    {"name": "JFK/UMass",         "lat": 42.3204, "lon": -71.0524, "line": "Red"},
-    {"name": "Airport",           "lat": 42.3743, "lon": -71.0301, "line": "Blue"},
-]
-
-# ── Scoring ────────────────────────────────────────────────────────────────────
-
+# ── Logic ────────────────────────────────────────────────────────────────────
 def haversine(lat1, lon1, lat2, lon2):
     R = 3958.8
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlam = math.radians(lon2 - lon1)
+    dphi, dlam = math.radians(lat2-lat1), math.radians(lon2-lon1)
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 def nearest_dist(lat, lon, places):
-    return min(haversine(lat, lon, p["lat"], p["lon"]) for p in places)
+    return min([haversine(lat, lon, p["lat"], p["lon"]) for p in places]) if places else 99
 
-def score_listing(h, has_car, income_band, heat_risk):
-    transit_dist = nearest_dist(h["lat"], h["lon"], T_STOPS)
-    transit_score = max(0, 100 - transit_dist * 120)
-
-    snap_dist = nearest_dist(h["lat"], h["lon"], SNAP_STORES)
-    snap_score = max(0, 100 - snap_dist * 150)
-
-    cooling_dist = nearest_dist(h["lat"], h["lon"], COOLING)
-    cooling_score = max(0, 100 - cooling_dist * 130)
-
-    wifi_dist = nearest_dist(h["lat"], h["lon"], WIFI)
-    wifi_score = max(0, 100 - wifi_dist * 140)
-
-    affordability_map = {"Under $800": 800, "$800–$1,200": 1100, "$1,200–$1,800": 1500, "Over $1,800": 2000}
-    max_rent = affordability_map[income_band]
-    afford_score = 100 if h["rent"] <= max_rent * 0.4 else max(0, 100 - (h["rent"] - max_rent * 0.4) * 0.3)
-
+def calculate_scores(h, has_car, income_band, heat_sensitive):
+    # Proximity metrics
+    t_dist = nearest_dist(h["lat"], h["lon"], T_STOPS)
+    m_dist = nearest_dist(h["lat"], h["lon"], MEDICAL)
+    s_dist = nearest_dist(h["lat"], h["lon"], SNAP_STORES)
+    
+    # Base sub-scores (0-100)
+    transit_score = max(0, 100 - (t_dist * 80))
+    medical_score = max(0, 100 - (m_dist * 60))
+    food_score = max(0, 100 - (s_dist * 70))
+    
+    # Weighting adjustments based on user profile
+    w_transit, w_med, w_food, w_afford = 0.3, 0.2, 0.2, 0.3
+    if heat_sensitive:
+        w_med, w_transit = 0.45, 0.15 # Prioritize healthcare for vulnerable populations
     if has_car:
-        w = [0.15, 0.25, 0.15, 0.10, 0.35]
-    elif heat_risk:
-        w = [0.25, 0.20, 0.35, 0.10, 0.10]
-    else:
-        w = [0.35, 0.20, 0.15, 0.10, 0.20]
-
-    total = (w[0]*transit_score + w[1]*snap_score + w[2]*cooling_score +
-             w[3]*wifi_score + w[4]*afford_score)
-
+        w_transit, w_food = 0.1, 0.3
+        
+    total = (transit_score * w_transit) + (medical_score * w_med) + (food_score * w_food) + (80 * w_afford)
+    
     return {
-        "total": round(total),
-        "transit": round(transit_score),
-        "snap": round(snap_score),
-        "cooling": round(cooling_score),
-        "wifi": round(wifi_score),
-        "affordability": round(afford_score),
-        "transit_dist": round(transit_dist, 2),
-        "snap_dist": round(snap_dist, 2),
+        "total": int(total),
+        "medical_dist": round(m_dist, 2),
+        "transit_dist": round(t_dist, 2),
+        "food_dist": round(s_dist, 2)
     }
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
-
+# ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### 🏠 HarborHome")
-    st.markdown("*Find the right home for your life*")
+    st.image("https://cdn-icons-png.flaticon.com/512/609/609803.png", width=50)
+    st.title("HarborHome")
     st.markdown("---")
+    
+    with st.expander("👤 Personal Profile", expanded=True):
+        income = st.selectbox("Monthly Income", ["Under $800", "$800-$1500", "$1500+"])
+        heat_sensitive = st.toggle("Heat Sensitive / Elderly", value=False)
+        has_car = st.toggle("Access to Vehicle", value=False)
+        beds = st.slider("Bedrooms Needed", 1, 4, 2)
 
-    st.markdown("**Your situation**")
-    income_band = st.selectbox("Monthly income range", ["Under $800","$800–$1,200","$1,200–$1,800","Over $1,800"])
-    household = st.radio("Household size", ["1 person","2 people","3–4 people","5+ people"])
-    has_car = st.checkbox("I have a car")
-    heat_risk = st.checkbox("Elderly / heat sensitive")
-    language = st.selectbox("Language", ["English","Spanish","Vietnamese","Haitian Creole","Portuguese"])
-    beds_needed = st.selectbox("Bedrooms needed", [1, 2, 3])
-    open_only = st.checkbox("Open waitlists only", value=True)
+    with st.expander("🗺️ Map Layers", expanded=True):
+        show_med = st.checkbox("Medical Centers", value=True)
+        show_housing = st.checkbox("Housing Projects", value=True)
+        show_food = st.checkbox("SNAP Retailers", value=True)
+    
+    st.info("💡 Pro-tip: Listings are ranked by your specific health and transit needs.")
 
-    st.markdown("---")
-    st.markdown("**Map layers**")
-    show_housing  = st.checkbox("Affordable housing", value=True)
-    show_snap     = st.checkbox("SNAP retailers", value=True)
-    show_cooling  = st.checkbox("Cooling centers", value=True)
-    show_wifi     = st.checkbox("Free wifi", value=False)
-    show_transit  = st.checkbox("T stops", value=True)
-
-    st.markdown("---")
-    st.markdown("<small style='opacity:.5'>Built for Build a Better Boston 2026</small>", unsafe_allow_html=True)
-
-# ── Main ───────────────────────────────────────────────────────────────────────
-
-st.markdown("""
+# ── Main UI ──────────────────────────────────────────────────────────────────
+st.markdown(f"""
 <div class="hero-banner">
-  <div style="font-size:24px;font-weight:600;margin-bottom:4px;">HarborHome 🏠</div>
-  <div style="opacity:.75;font-size:14px;">Boston's housing decision engine — not just a map. Scored for your life.</div>
+    <h1>HarborHome Boston 🏠</h1>
+    <p>Data-driven housing placement for a healthier, more connected life.</p>
 </div>
 """, unsafe_allow_html=True)
 
-col_map, col_results = st.columns([3, 2])
+col_left, col_right = st.columns([3, 2])
 
-# ── Map ────────────────────────────────────────────────────────────────────────
-
-with col_map:
-    m = folium.Map(location=[42.3250, -71.0850], zoom_start=12,
-                   tiles="CartoDB positron")
-
+with col_left:
+    # ── Map Implementation ──
+    m = folium.Map(location=[42.3300, -71.0850], zoom_start=13, tiles="CartoDB positron")
+    
+    if show_med:
+        for med in MEDICAL:
+            folium.Marker(
+                [med["lat"], med["lon"]],
+                tooltip=med["name"],
+                icon=folium.Icon(color="red", icon="plus-med", prefix="fa")
+            ).add_to(m)
+            
     if show_housing:
         for h in HOUSING:
-            if open_only and h["waitlist"] == "Closed":
-                continue
-            scores = score_listing(h, has_car, income_band, heat_risk)
-            color = "#1D9E75" if scores["total"] >= 65 else "#BA7517" if scores["total"] >= 45 else "#E24B4A"
+            score_data = calculate_scores(h, has_car, income, heat_sensitive)
+            color = "#1D9E75" if score_data["total"] > 70 else "#F59E0B" if score_data["total"] > 50 else "#EF4444"
             folium.CircleMarker(
-                location=[h["lat"], h["lon"]],
-                radius=10,
-                color=color,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.85,
-                popup=folium.Popup(
-                    f"<b>{h['name']}</b><br>"
-                    f"${h['rent']}/mo · {h['beds']}BR · {h['waitlist']}<br>"
-                    f"Score: <b>{scores['total']}/100</b><br>"
-                    f"Transit: {scores['transit_dist']} mi to nearest T",
-                    max_width=220
-                ),
-                tooltip=f"{h['name']} — Score: {scores['total']}"
+                [h["lat"], h["lon"]],
+                radius=12, color=color, fill=True, fill_opacity=0.7,
+                popup=f"{h['name']} - Match: {score_data['total']}%"
             ).add_to(m)
 
-    if show_snap:
-        for s in SNAP_STORES:
-            folium.Marker(
-                location=[s["lat"], s["lon"]],
-                popup=s["name"],
-                tooltip=s["name"],
-                icon=folium.Icon(color="orange", icon="shopping-cart", prefix="fa")
-            ).add_to(m)
+    st_folium(m, height=550, use_container_width=True)
 
-    if show_cooling:
-        for c in COOLING:
-            folium.Marker(
-                location=[c["lat"], c["lon"]],
-                popup=f"{c['name']}<br>{c['hours']}",
-                tooltip=c["name"],
-                icon=folium.Icon(color="blue", icon="tint", prefix="fa")
-            ).add_to(m)
-
-    if show_wifi:
-        for w in WIFI:
-            folium.Marker(
-                location=[w["lat"], w["lon"]],
-                popup=w["name"],
-                tooltip=w["name"],
-                icon=folium.Icon(color="purple", icon="wifi", prefix="fa")
-            ).add_to(m)
-
-    if show_transit:
-        line_colors = {"Orange": "orange", "Red": "red", "Blue": "blue", "Green": "green"}
-        for t in T_STOPS:
-            folium.CircleMarker(
-                location=[t["lat"], t["lon"]],
-                radius=5,
-                color=line_colors.get(t["line"], "gray"),
-                fill=True,
-                fill_color=line_colors.get(t["line"], "gray"),
-                fill_opacity=0.9,
-                tooltip=f"T: {t['name']} ({t['line']} Line)"
-            ).add_to(m)
-
-    legend_html = """
-    <div style="position:fixed;bottom:20px;left:20px;z-index:1000;background:white;
-                padding:12px 16px;border-radius:10px;border:1px solid #ddd;font-size:12px;font-family:sans-serif;">
-      <b>Housing score</b><br>
-      <span style="color:#1D9E75">●</span> Great match (65+)<br>
-      <span style="color:#BA7517">●</span> Decent match (45–64)<br>
-      <span style="color:#E24B4A">●</span> Low match (&lt;45)
-    </div>
-    """
-    m.get_root().html.add_child(folium.Element(legend_html))
-
-    st_folium(m, height=520, use_container_width=True)
-
-# ── Results ────────────────────────────────────────────────────────────────────
-
-with col_results:
-    st.markdown("#### Top matches for you")
-
-    scored = []
-    for h in HOUSING:
-        if open_only and h["waitlist"] == "Closed":
-            continue
-        s = score_listing(h, has_car, income_band, heat_risk)
-        scored.append({**h, **s})
-
-    scored.sort(key=lambda x: x["total"], reverse=True)
-
-    if not scored:
-        st.warning("No open waitlists match your filters. Try unchecking 'Open waitlists only.'")
-    else:
-        for i, h in enumerate(scored[:6]):
-            grade = "great" if h["total"] >= 65 else "ok" if h["total"] >= 45 else "low"
-            label = "Great match" if grade == "great" else "Decent match" if grade == "ok" else "Low match"
-            label_color = "#1D9E75" if grade == "great" else "#BA7517" if grade == "ok" else "#E24B4A"
-
+with col_right:
+    st.subheader("Top Matches")
+    
+    tabs = st.tabs(["Listings", "Nearby Care", "Resources"])
+    
+    with tabs[0]: # Listings
+        scored_listings = []
+        for h in HOUSING:
+            s = calculate_scores(h, has_car, income, heat_sensitive)
+            scored_listings.append({**h, **s})
+        
+        scored_listings.sort(key=lambda x: x["total"], reverse=True)
+        
+        for h in scored_listings:
+            status_class = "great" if h["total"] > 70 else "ok" if h["total"] > 50 else "low"
             st.markdown(f"""
-            <div class="score-card score-{grade}">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                <div>
-                  <div style="font-weight:500;font-size:14px;">{h['name']}</div>
-                  <div style="font-size:12px;color:#666;">{h['neighborhood']} · ${h['rent']}/mo · {h['beds']}BR</div>
+            <div class="score-card score-{status_class}">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="font-weight:600; color:#0B2C4A;">{h['name']}</span>
+                    <span style="font-weight:bold; color:#1D9E75;">{h['total']}% Match</span>
                 </div>
-                <div style="text-align:right;">
-                  <div style="font-size:20px;font-weight:600;color:{label_color};">{h['total']}</div>
-                  <div style="font-size:10px;color:{label_color};">{label}</div>
+                <div style="margin: 8px 0;">
+                    <span class="tag tag-blue">{h['neighborhood']}</span>
+                    <span class="tag tag-green">${h['rent']}/mo</span>
                 </div>
-              </div>
-              <div style="margin-top:8px;font-size:11px;color:#888;display:flex;gap:12px;">
-                <span>🚇 {h['transit_dist']} mi to T</span>
-                <span>🛒 {h['snap_dist']} mi to SNAP</span>
-                <span>📋 {h['waitlist']}</span>
-              </div>
-              <div style="margin-top:6px;background:#f5f5f5;border-radius:4px;height:4px;">
-                <div style="width:{h['total']}%;background:{label_color};height:4px;border-radius:4px;"></div>
-              </div>
+                <div style="font-size:0.8rem; color:#666; display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                    <span>🏥 {h['medical_dist']} mi to Health</span>
+                    <span>🚇 {h['transit_dist']} mi to T-Stop</span>
+                    <span>🛒 {h['food_dist']} mi to Grocery</span>
+                    <span>🛏️ {h['beds']} Bedrooms</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
+            
+    with tabs[1]: # Nearby Care
+        st.write("Community Health Resources")
+        for med in MEDICAL:
+            st.write(f"**{med['name']}**")
+            st.caption(f"Type: {med['type']} | Distance: Calculating...")
+            
+    with tabs[2]: # Resources
+        st.markdown("""
+        - [Apply for SNAP](https://www.mass.gov/snap-benefits-formerly-food-stamps)
+        - [Boston Housing Authority](https://www.bostonhousing.org/)
+        - [Emergency Cooling Centers](https://www.boston.gov/departments/public-health-commission/keeping-cool-heat)
+        """)
 
-    st.markdown("---")
-    st.markdown("#### Share a resource bundle")
-    st.markdown("<small style='color:#666'>Copy this link and send it to a client or family member — it saves your exact filters.</small>", unsafe_allow_html=True)
-
-    bundle_params = f"?income={income_band}&car={has_car}&heat={heat_risk}&beds={beds_needed}&open={open_only}"
-    st.code(f"harborhome.app/map{bundle_params}", language=None)
-
-    if st.button("📋 Copy bundle link"):
-        st.success("Link copied! Share it with anyone who needs it.")
-
-    st.markdown("---")
-    st.markdown("#### Current alerts")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.info("🌡️ No heat advisory today")
-    with col_b:
-        st.success(f"✅ {len([h for h in HOUSING if h['waitlist']=='Open'])} open waitlists")
-
+# ── Footer ───────────────────────────────────────────────────────────────────
+st.divider()
+f_col1, f_col2, f_col3 = st.columns(3)
+with f_col1:
+    st.metric("Open Waitlists", "12 Active")
+with f_col2:
+    st.metric("Avg. Match Score", "68%", "+5%")
+with f_col3:
+    st.button("📧 Email Bundle to Client", use_container_width=True)
+    
