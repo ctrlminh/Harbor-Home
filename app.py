@@ -336,6 +336,3 @@ with col_results:
     with col_b:
         st.success(f"✅ {len([h for h in HOUSING if h['waitlist']=='Open'])} open waitlists")
 
-git init
-git add .
-git commit -m "initial harborhome"
