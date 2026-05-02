@@ -161,5 +161,4 @@ elif st.session_state.page == "News":
     st.info("**May 10:** Free Community Health Fair @ The Dimock Center")
     st.warning("**May 12:** Deadline to apply for Fuel Assistance (LIHEAP)")
     st.error("**Maintenance:** Water Main work in East Boston on May 15")
-
     
