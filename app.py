@@ -18,14 +18,22 @@ st.markdown("""
     .info-card {
         background-color: rgba(128, 128, 128, 0.1);
         backdrop-filter: blur(10px);
-        padding: 1.5rem;
+        padding: 1.2rem;
         border-radius: 12px;
         border: 1px solid rgba(128, 128, 128, 0.2);
         margin-bottom: 1rem;
     }
     .info-card h4 { color: var(--text-color); margin: 0; font-weight: 700; }
-    .info-card p { color: var(--text-color); opacity: 0.8; margin: 5px 0; }
-
+    .info-card p { color: var(--text-color); opacity: 0.8; margin: 3px 0; font-size: 0.9rem; }
+    .tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        background: #3B82F6;
+        color: white;
+        margin-top: 5px;
+    }
     .action-box {
         background-color: rgba(59, 130, 246, 0.1);
         padding: 2rem;
@@ -37,22 +45,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── FULL DATASET ──────────────────────────────────────────────────────────
+# ── EXPANDED DATASET ───────────────────────────────────────────────────────
 HOUSING = [
-    {"name": "Roxbury Crossing", "lat": 42.3315, "lon": -71.0952, "rent": 950, "beds": 2, "type": "Subsidized"},
-    {"name": "JP Commons", "lat": 42.3100, "lon": -71.1130, "rent": 1100, "beds": 1, "type": "Affordable"},
-    {"name": "Dorchester Arms", "lat": 42.3010, "lon": -71.0680, "rent": 850, "beds": 2, "type": "Subsidized"},
-    {"name": "Mattapan Village", "lat": 42.2770, "lon": -71.0920, "rent": 1300, "beds": 3, "type": "Market Rate (Low)"}
-]
-
-MEDICAL = [
-    {"name": "Boston Medical Center", "lat": 42.3350, "lon": -71.0740, "type": "Hospital / ER"},
-    {"name": "Whittier Street Health", "lat": 42.3320, "lon": -71.0920, "type": "Clinic / Dental"}
-]
-
-SNAP = [
-    {"name": "Stop & Shop (Dorchester)", "lat": 42.3210, "lon": -71.0650},
-    {"name": "Daily Table (Roxbury)", "lat": 42.3295, "lon": -71.0845}
+    {"name": "Roxbury Crossing Apts", "lat": 42.3315, "lon": -71.0952, "rent": 950, "beds": 2, "type": "Subsidized", "area": "Roxbury"},
+    {"name": "JP Commons", "lat": 42.3100, "lon": -71.1130, "rent": 1100, "beds": 1, "type": "Affordable", "area": "Jamaica Plain"},
+    {"name": "Dorchester Arms", "lat": 42.3010, "lon": -71.0680, "rent": 850, "beds": 2, "type": "Subsidized", "area": "Dorchester"},
+    {"name": "Mattapan Village", "lat": 42.2770, "lon": -71.0920, "rent": 1300, "beds": 3, "type": "Market Rate", "area": "Mattapan"},
+    {"name": "Eastie Waterfront", "lat": 42.3700, "lon": -71.0390, "rent": 1600, "beds": 1, "type": "Market Rate", "area": "East Boston"},
+    {"name": "South End Gateway", "lat": 42.3420, "lon": -71.0740, "rent": 1200, "beds": 2, "type": "Affordable", "area": "South End"},
+    {"name": "Lower Mills Lofts", "lat": 42.2720, "lon": -71.0690, "rent": 1450, "beds": 2, "type": "Market Rate", "area": "Dorchester"},
+    {"name": "Mission Hill Heights", "lat": 42.3300, "lon": -71.1040, "rent": 1050, "beds": 3, "type": "Subsidized", "area": "Mission Hill"}
 ]
 
 WIFI_CENTERS = [
@@ -98,28 +100,64 @@ if st.session_state.page == "Home":
         st.markdown('<div class="action-box"><h2>📰</h2><h3>News</h3></div>', unsafe_allow_html=True)
         st.button("Local Updates", key="n_btn", use_container_width=True, on_click=ch_page, args=("News",))
 
-# ── PAGE: HOUSING ───────────────────────────────────────────────────────────
+# ── PAGE: HOUSING (FIXED & EXPANDED) ──────────────────────────────────────────
 elif st.session_state.page == "Housing":
-    st.subheader("Affordability-First Housing")
+    st.subheader("Affordable Housing Navigator")
     
-    with st.expander("Filter Options"):
-        max_r = st.slider("Max Rent", 500, 2000, 1500)
-    
-    filtered = [h for h in HOUSING if h['rent'] <= max_r]
-    
-    m1 = folium.Map(location=[42.33, -71.08], zoom_start=12)
-    for h in filtered:
-        folium.Marker([h["lat"], h["lon"]], tooltip=h['name']).add_to(m1)
-    
-    st_folium(m1, height=400, use_container_width=True)
-    
-    for h in filtered:
-        st.markdown(f'<div class="info-card"><h4>{h["name"]}</h4><p>${h["rent"]}/mo • {h["beds"]} Bed • {h["type"]}</p></div>', unsafe_allow_html=True)
+    # ── Sidebar Filters
+    with st.sidebar:
+        st.header("Search Filters")
+        max_rent = st.slider("Maximum Monthly Rent", 500, 2000, 1500, step=50)
+        
+        min_beds = st.selectbox("Minimum Bedrooms", [1, 2, 3], index=0)
+        
+        types = ["All", "Subsidized", "Affordable", "Market Rate"]
+        selected_type = st.radio("Building Type", types)
+        
+        areas = ["All"] + sorted(list(set(h['area'] for h in HOUSING)))
+        selected_area = st.selectbox("Neighborhood", areas)
+
+    # ── Filter Logic
+    filtered_h = [
+        h for h in HOUSING 
+        if h['rent'] <= max_rent 
+        and h['beds'] >= min_beds
+        and (selected_type == "All" or h['type'] == selected_type)
+        and (selected_area == "All" or h['area'] == selected_area)
+    ]
+
+    # ── Map and List Display
+    col_map, col_list = st.columns([2, 1])
+
+    with col_map:
+        st.write(f"Showing {len(filtered_h)} matching properties")
+        m = folium.Map(location=[42.33, -71.08], zoom_start=12)
+        for h in filtered_h:
+            popup_text = f"{h['name']} - ${h['rent']}"
+            folium.Marker(
+                [h["lat"], h["lon"]], 
+                tooltip=popup_text,
+                icon=folium.Icon(color="blue", icon="home")
+            ).add_to(m)
+        st_folium(m, height=500, use_container_width=True)
+
+    with col_list:
+        if not filtered_h:
+            st.warning("No listings match your current filters.")
+        for h in filtered_h:
+            st.markdown(f"""
+            <div class="info-card">
+                <h4>{h['name']}</h4>
+                <p><b>{h['area']}</b></p>
+                <p>${h['rent']}/mo | {h['beds']} BR</p>
+                <span class="tag">{h['type']}</span>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ── PAGE: RESOURCES ────────────────────────────────────────────────────────
 elif st.session_state.page == "Resources":
     st.header("📍 Community Support")
-    t1, t2, t3, t4 = st.tabs(["📶 Wi-Fi/Library", "🏠 Community", "❄️ Cooling", "🩺 Health/Food"])
+    t1, t2, t3 = st.tabs(["📶 Wi-Fi & Library", "🏠 Community Centers", "❄️ Cooling Centers"])
     
     with t1:
         for item in WIFI_CENTERS:
@@ -128,18 +166,14 @@ elif st.session_state.page == "Resources":
         for item in COMMUNITY_CENTERS:
             st.markdown(f'<div class="info-card"><h4>{item["name"]}</h4><p>{item["address"]}</p><small>{item["notes"]}</small></div>', unsafe_allow_html=True)
     with t3:
+        st.info("Official cooling sites active during heat emergencies.")
         for item in COOLING_CENTERS:
             st.markdown(f'<div class="info-card" style="border-left: 5px solid #3B82F6;"><h4>{item["name"]}</h4><p>{item["address"]}</p></div>', unsafe_allow_html=True)
-    with t4:
-        st.subheader("Medical & SNAP")
-        m2 = folium.Map(location=[42.33, -71.08], zoom_start=12)
-        for med in MEDICAL: folium.Marker([med["lat"], med["lon"]], icon=folium.Icon(color="red")).add_to(m2)
-        for s in SNAP: folium.Marker([s["lat"], s["lon"]], icon=folium.Icon(color="orange")).add_to(m2)
-        st_folium(m2, height=300, use_container_width=True)
 
 # ── PAGE: NEWS ──────────────────────────────────────────────────────────────
 elif st.session_state.page == "News":
     st.subheader("Neighborhood Updates")
     st.info("**Community Health Fair:** May 10th at BCYF Shelburne.")
     st.warning("**Registration:** BPS Summer program sign-ups close next week.")
+
     
