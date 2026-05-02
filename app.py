@@ -6,166 +6,182 @@ import math
 
 # ── Configuration ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="HarborHome | BPS Support Portal",
+    page_title="HarborHome | Boston Public Resource Hub",
     page_icon="🏘️",
     layout="wide"
 )
 
-# ── Enhanced Styling (Modern Hub Design) ──────────────────────────────────────
+# ── Enhanced Styling (Action-Oriented & Modern) ──────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    /* Hide Sidebar completely if you don't like it */
     [data-testid="stSidebar"] { display: none; }
-    
-    /* Center the main container */
-    .main .block-container { padding-top: 2rem; max-width: 1200px; }
+    .main .block-container { padding-top: 1.5rem; max-width: 1250px; }
 
-    /* Top Navigation Tabs Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 24px;
-        background-color: transparent;
-        justify-content: center;
-        border-bottom: 2px solid #E2E8F0;
-    }
+    /* Navigation Buttons */
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: #64748B;
+        background-color: #F1F5F9;
+        border-radius: 8px;
+        padding: 10px 25px;
+        height: auto;
     }
-    .stTabs [aria-selected="true"] {
-        color: #3B82F6 !class;
-        border-bottom-color: #3B82F6 !class;
-    }
+    .stTabs [aria-selected="true"] { background-color: #3B82F6 !important; color: white !important; }
 
     /* Hero Banner */
     .hero-banner {
-        background: linear-gradient(135deg, #3B82F6 0%, #2DD4BF 100%);
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         color: white;
         padding: 3rem;
         border-radius: 24px;
         text-align: center;
         margin-bottom: 2rem;
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
     }
 
-    /* Feature Cards for Home Page */
-    .feature-card {
+    /* Action Buttons for Home Page */
+    .action-btn {
         background: white;
-        padding: 20px;
-        border-radius: 16px;
-        border: 1px solid #E2E8F0;
+        padding: 30px;
+        border-radius: 20px;
+        border: 2px solid #E2E8F0;
         text-align: center;
-        height: 100%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-
-    /* Score Card Styling */
-    .score-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.2rem;
-        border: 1px solid #E0E4E8;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .score-great { border-left: 6px solid #10B981; }
+    .action-btn:hover { border-color: #3B82F6; transform: translateY(-5px); }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Data & Content ───────────────────────────────────────────────────────────
-# (Data remains the same as previous version for consistency)
+# ── DATA EXPANSION (Housing, Medical, SNAP, Utilities) ───────────────────────
 HOUSING = [
-    {"name": "Roxbury Crossing Apts", "lat": 42.3315, "lon": -71.0952, "rent": 950, "beds": 2, "neighborhood": "Roxbury"},
-    {"name": "Jamaica Plain Commons", "lat": 42.3100, "lon": -71.1130, "rent": 875, "beds": 1, "neighborhood": "JP"},
-    {"name": "Dorchester Arms", "lat": 42.3010, "lon": -71.0680, "rent": 800, "beds": 2, "neighborhood": "Dorchester"},
+    {"name": "Roxbury Crossing Apts", "lat": 42.3315, "lon": -71.0952, "rent": 950, "beds": 2, "type": "Subsidized", "waitlist": "Open"},
+    {"name": "JP Common Ground", "lat": 42.3100, "lon": -71.1130, "rent": 875, "beds": 1, "type": "Affordable", "waitlist": "Open"},
+    {"name": "Dorchester Arms", "lat": 42.3010, "lon": -71.0680, "rent": 800, "beds": 2, "type": "Subsidized", "waitlist": "Closed"},
+    {"name": "Mattapan Village", "lat": 42.2770, "lon": -71.0920, "rent": 1100, "beds": 3, "type": "Affordable", "waitlist": "Open"},
+    {"name": "Eastie Waterfront", "lat": 42.3720, "lon": -71.0350, "rent": 900, "beds": 2, "type": "Affordable", "waitlist": "Open"},
+    {"name": "South End Haven", "lat": 42.3380, "lon": -71.0750, "rent": 1200, "beds": 1, "type": "Market Rate (Low)", "waitlist": "Open"}
 ]
-SNAP_STORES = [{"name": "Stop & Shop", "lat": 42.3290, "lon": -71.0880}]
-WIFI_SPOTS = [{"name": "Public Library Hub", "lat": 42.3300, "lon": -71.0890}]
 
-# ── Logic ────────────────────────────────────────────────────────────────────
-def haversine(lat1, lon1, lat2, lon2):
-    R = 3958.8
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi, dlam = math.radians(lat2-lat1), math.radians(lon2-lon1)
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+MEDICAL = [
+    {"name": "Whittier Street Health", "lat": 42.3320, "lon": -71.0920, "spec": "Primary/Dental"},
+    {"name": "Codman Square Health", "lat": 42.2900, "lon": -71.0690, "spec": "Urgent Care"},
+    {"name": "Dimock Center", "lat": 42.3180, "lon": -71.0980, "spec": "Mental Health/Clinic"},
+    {"name": "DotHouse Health", "lat": 42.3080, "lon": -71.0580, "spec": "Full Service"},
+    {"name": "Boston Medical Center", "lat": 42.3350, "lon": -71.0740, "spec": "Emergency/Hospital"},
+    {"name": "Upham's Corner Health", "lat": 42.3160, "lon": -71.0620, "spec": "Community Clinic"}
+]
 
-# ── Main UI Layout ───────────────────────────────────────────────────────────
+SNAP_STORES = [
+    {"name": "Stop & Shop (Roxbury)", "lat": 42.3290, "lon": -71.0880},
+    {"name": "Daily Table (Dorchester)", "lat": 42.3075, "lon": -71.0685},
+    {"name": "Price Rite (Hyde Park)", "lat": 42.2490, "lon": -71.1250},
+    {"name": "Tropical Foods", "lat": 42.3310, "lon": -71.0820},
+    {"name": "Market Basket (Chelsea/Eastie)", "lat": 42.3950, "lon": -71.0350},
+    {"name": "Save-A-Lot", "lat": 42.2850, "lon": -71.0720}
+]
+
+# ── Main Layout ──────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero-banner">
-    <h1 style="color:white; margin:0;">HarborHome Boston 🏠</h1>
-    <p style="font-size:1.2rem; margin-top:10px; opacity:0.9;">Secure Housing. Stable Students. Stronger Schools.</p>
+    <h1 style="color:white; margin:0; font-size: 2.8rem;">HarborHome Boston 🏠</h1>
+    <p style="font-size:1.2rem; margin-top:10px; opacity:0.95;">The Open-Access Portal for Housing, Health, and Basic Needs.</p>
 </div>
 """, unsafe_allow_html=True)
 
-# THE NEW NAVIGATION (Replacing Sidebar)
-tab_home, tab_house, tab_res, tab_news = st.tabs([
-    "🏠 Home", 
-    "🔍 Housing Match", 
-    "📍 Resource Finder", 
-    "📰 Community News"
-])
+tab_home, tab_house, tab_res, tab_news = st.tabs(["🏠 Welcome", "🔍 Housing Search", "📍 Resource Finder", "📰 Community Updates"])
 
-# ── TAB 1: HOME PAGE (Landing) ───────────────────────────────────────────────
+# ── TAB 1: HOME (With Action Buttons) ────────────────────────────────────────
 with tab_home:
-    st.header("Welcome, Counselor")
-    st.write("HarborHome is designed to help Boston Public Schools staff quickly connect families with housing and essential services.")
+    st.markdown("### How can we help you today?")
+    st.write("Select a service below to begin your search. All data is real-time and open to the public.")
     
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("""<div class="feature-card"><h3>🏘️ Housing</h3><p>Rank listings based on your student's proximity to their school and SNAP retailers.</p></div>""", unsafe_allow_html=True)
-    with c2:
-        st.markdown("""<div class="feature-card"><h3>📶 Resources</h3><p>Find free WiFi, water stations, and food pantries near any address.</p></div>""", unsafe_allow_html=True)
-    with c3:
-        st.markdown("""<div class="feature-card"><h3>🌐 Language</h3><p>Instantly translate data to help non-English speaking families navigate options.</p></div>""", unsafe_allow_html=True)
+    # Custom CSS for columns that look like buttons
+    btn_col1, btn_col2, btn_col3 = st.columns(3)
     
-    st.markdown("---")
-    st.subheader("Quick Settings")
-    lang = st.radio("Select Language", ["English", "Español"], horizontal=True)
+    with btn_col1:
+        st.markdown("""<div class="action-btn"><h1>🏘️</h1><h3>Find a Home</h3><p>Filter by rent, beds, and proximity to schools.</p></div>""", unsafe_allow_html=True)
+        if st.button("Start Housing Search", use_container_width=True):
+            st.info("Click the 'Housing Search' tab at the top!")
+            
+    with btn_col2:
+        st.markdown("""<div class="action-btn"><h1>🩺</h1><h3>Get Medical Care</h3><p>Locate clinics and urgent care in your neighborhood.</p></div>""", unsafe_allow_html=True)
+        if st.button("Locate Health Centers", use_container_width=True):
+            st.info("Click the 'Resource Finder' tab and filter for Medical.")
 
-# ── TAB 2: HOUSING MATCH ─────────────────────────────────────────────────────
+    with btn_col3:
+        st.markdown("""<div class="action-btn"><h1>🛒</h1><h3>Food & Support</h3><p>Find stores that accept SNAP and local food pantries.</p></div>""", unsafe_allow_html=True)
+        if st.button("Find Food Resources", use_container_width=True):
+            st.info("Click the 'Resource Finder' tab and filter for SNAP.")
+
+    st.divider()
+    st.subheader("🌐 Accessibility Options")
+    lang = st.radio("Primary Language", ["English", "Español", "Tiếng Việt", "Kreyòl Ayisyen"], horizontal=True)
+
+# ── TAB 2: HOUSING SEARCH (Filters Restored) ─────────────────────────────────
 with tab_house:
-    col_map, col_info = st.columns([2, 1])
-    with col_info:
-        st.subheader("Client Profile")
-        income = st.selectbox("Monthly Income", ["Under $800", "$800-$1500", "$1500+"])
-        youth_focus = st.toggle("Prioritize Student Access", value=True)
-        
-        for h in HOUSING:
+    st.subheader("Comprehensive Housing Search")
+    
+    f_col1, f_col2, f_col3 = st.columns(3)
+    with f_col1:
+        max_rent = st.slider("Maximum Monthly Rent", 500, 2000, 1200)
+    with f_col2:
+        min_beds = st.selectbox("Minimum Bedrooms", [1, 2, 3, 4], index=1)
+    with f_col3:
+        h_type = st.multiselect("Housing Type", ["Subsidized", "Affordable", "Market Rate (Low)"], default=["Subsidized", "Affordable"])
+
+    # Filter Logic
+    filtered_housing = [h for h in HOUSING if h['rent'] <= max_rent and h['beds'] >= min_beds and h['type'] in h_type]
+
+    h_left, h_right = st.columns([2, 1])
+    with h_left:
+        m = folium.Map(location=[42.3200, -71.0800], zoom_start=12, tiles="CartoDB positron")
+        for h in filtered_housing:
+            folium.Marker([h["lat"], h["lon"]], tooltip=h['name'], icon=folium.Icon(color="green", icon="home")).add_to(m)
+        st_folium(m, height=500, use_container_width=True)
+
+    with h_right:
+        st.write(f"**Found {len(filtered_housing)} matches**")
+        for h in filtered_housing:
             st.markdown(f"""
-            <div class="score-card score-great">
-                <div style="display:flex; justify-content:space-between;">
-                    <strong>{h['name']}</strong>
-                    <span style="color:#10B981;">94% Match</span>
-                </div>
-                <small>{h['neighborhood']} • ${h['rent']}/mo</small>
+            <div style="background:white; padding:12px; border-radius:10px; border:1px solid #E2E8F0; margin-bottom:10px;">
+                <h4 style="margin:0;">{h['name']}</h4>
+                <p style="margin:0; font-size:0.9rem;">${h['rent']}/mo • {h['beds']} Bed • {h['type']}</p>
+                <small style="color:blue;">Waitlist: {h['waitlist']}</small>
             </div>
             """, unsafe_allow_html=True)
 
-    with col_map:
-        m = folium.Map(location=[42.3300, -71.0850], zoom_start=12, tiles="CartoDB positron")
-        for h in HOUSING:
-            folium.Marker([h["lat"], h["lon"]], popup=h['name'], icon=folium.Icon(color="green")).add_to(m)
-        st_folium(m, height=500, width=700)
-
-# ── TAB 3: RESOURCE FINDER ───────────────────────────────────────────────────
+# ── TAB 3: RESOURCE FINDER (Medical + SNAP + Infrastructure) ──────────────────
 with tab_res:
-    st.subheader("Find Student Support Services")
-    address = st.text_input("Enter Student Home Address", placeholder="e.g. 100 Dudley St, Roxbury")
-    res_type = st.multiselect("Filter Resources", ["SNAP Stores", "Free WiFi", "Water Stations"], default=["SNAP Stores"])
+    st.subheader("📍 Neighborhood Support Map")
     
-    m2 = folium.Map(location=[42.3300, -71.0850], zoom_start=14, tiles="CartoDB positron")
-    if "SNAP Stores" in res_type:
-        for s in SNAP_STORES: folium.Marker([s["lat"], s["lon"]], tooltip="SNAP Store", icon=folium.Icon(color="orange")).add_to(m2)
-    st_folium(m2, height=450, width=1100)
+    res_type = st.multiselect("View Local Resources", 
+                              ["Medical Centers 🩺", "SNAP Retailers 🛒", "Public WiFi 📶", "Water Stations 💧"], 
+                              default=["Medical Centers 🩺", "SNAP Retailers 🛒"])
+    
+    m2 = folium.Map(location=[42.3100, -71.0700], zoom_start=13, tiles="CartoDB positron")
+    
+    if "Medical Centers 🩺" in res_type:
+        for med in MEDICAL:
+            folium.Marker([med["lat"], med["lon"]], popup=f"{med['name']} ({med['spec']})", icon=folium.Icon(color="red", icon="plus")).add_to(m2)
+    
+    if "SNAP Retailers 🛒" in res_type:
+        for s in SNAP_STORES:
+            folium.Marker([s["lat"], s["lon"]], popup=s["name"], icon=folium.Icon(color="orange", icon="shopping-cart")).add_to(m2)
+
+    st_folium(m2, height=550, use_container_width=True)
 
 # ── TAB 4: NEWS ──────────────────────────────────────────────────────────────
 with tab_news:
-    st.subheader("Upcoming Events & Announcements")
-    st.info("May 5, 2026: Youth Housing Subsidies Council Meeting @ 6:00 PM")
-    st.warning("May 12, 2026: Summer SNAP Registration Deadline")
+    st.header("Community Bulletin")
+    n_col1, n_col2 = st.columns(2)
+    with n_col1:
+        st.info("**May 5:** Public Hearing on Dorchester Rent Stabilization @ 6PM (City Hall)")
+        st.success("**May 10:** Free Community Health Fair @ The Dimock Center")
+    with n_col2:
+        st.warning("**May 12:** Deadline to apply for Fuel Assistance (LIHEAP)")
+        st.error("**Alert:** Water Main Maintenance in East Boston on May 15")
 
-    
+        
