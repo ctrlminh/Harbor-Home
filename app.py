@@ -3,7 +3,7 @@ import folium
 from streamlit_folium import st_folium
 import pandas as pd
 
-# ── Configuration & State ───────────────────────────────────────────────────
+# ── Configuration ──────────────────────────────────────────────────────────
 st.set_page_config(page_title="HarborHome Boston", page_icon="🏘️", layout="wide")
 
 if 'page' not in st.session_state:
@@ -12,152 +12,136 @@ if 'page' not in st.session_state:
 def ch_page(name):
     st.session_state.page = name
 
-# ── Visibility & Style Fixes ────────────────────────────────────────────────
+# ── Theme-Agnostic Styling ─────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Force high-contrast colors to fix visibility issues */
-    .stApp { background-color: #0F172A; color: #F8FAFC; }
-    [data-testid="stSidebar"] { display: none; }
-    
-    /* Modern Navigation Bar */
-    .nav-bar {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        padding: 1rem;
-        background: #1E293B;
-        border-bottom: 2px solid #3B82F6;
-        margin-bottom: 2rem;
+    /* Main container styling */
+    .stApp {
+        transition: background-color 0.3s ease;
     }
-    
-    /* High-Contrast Info Cards */
+
+    /* Universal Info Cards: Works in Light & Dark */
     .info-card {
-        background: #1E293B;
+        background-color: rgba(128, 128, 128, 0.1); /* Semi-transparent */
+        backdrop-filter: blur(10px);
         padding: 1.5rem;
         border-radius: 12px;
-        border: 1px solid #334155;
-        color: #F8FAFC !important;
+        border: 1px solid rgba(128, 128, 128, 0.2);
         margin-bottom: 1rem;
+        transition: transform 0.2s ease;
     }
-    .info-card h4 { color: #3B82F6 !important; margin: 0; }
-    .info-card p { color: #CBD5E1 !important; margin: 5px 0; }
+    
+    .info-card:hover {
+        transform: translateY(-2px);
+        border-color: #3B82F6;
+    }
 
-    /* Action Buttons */
+    /* Dynamic Text Colors */
+    /* Streamlit uses these variables automatically based on theme */
+    .info-card h4 {
+        color: var(--text-color);
+        margin: 0;
+        font-weight: 700;
+    }
+    .info-card p {
+        color: var(--text-color);
+        opacity: 0.8;
+        margin: 5px 0;
+    }
+
+    /* Action Box for Home Page */
     .action-box {
-        background: #1E293B;
+        background-color: rgba(59, 130, 246, 0.1);
         padding: 2rem;
         border-radius: 16px;
-        border: 2px solid #334155;
+        border: 2px solid rgba(59, 130, 246, 0.3);
         text-align: center;
-        transition: 0.3s;
+        height: 100%;
     }
-    .action-box:hover { border-color: #3B82F6; background: #263449; }
+    
+    /* Navigation bar spacing */
+    .nav-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 25px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ── MASSIVE DATASET ─────────────────────────────────────────────────────────
-HOUSING = [
-    {"name": "Roxbury Crossing", "lat": 42.3315, "lon": -71.0952, "rent": 950, "beds": 2, "area": "Roxbury", "type": "Subsidized"},
-    {"name": "JP Commons", "lat": 42.3100, "lon": -71.1130, "rent": 1100, "beds": 1, "area": "Jamaica Plain", "type": "Affordable"},
-    {"name": "Dorchester Arms", "lat": 42.3010, "lon": -71.0680, "rent": 850, "beds": 2, "area": "Dorchester", "type": "Subsidized"},
-    {"name": "Mattapan Village", "lat": 42.2770, "lon": -71.0920, "rent": 1300, "beds": 3, "area": "Mattapan", "type": "Market Rate (Low)"},
-    {"name": "Eastie Waterfront", "lat": 42.3720, "lon": -71.0350, "rent": 1050, "beds": 2, "area": "East Boston", "type": "Affordable"},
-    {"name": "South End Haven", "lat": 42.3380, "lon": -71.0750, "rent": 1400, "beds": 1, "area": "South End", "type": "Affordable"}
-]
-
-MEDICAL = [
-    {"name": "Boston Medical Center", "lat": 42.3350, "lon": -71.0740, "type": "Hospital / ER"},
-    {"name": "Whittier Street Health", "lat": 42.3320, "lon": -71.0920, "type": "Clinic / Dental"},
-    {"name": "Codman Square Health", "lat": 42.2900, "lon": -71.0690, "type": "Urgent Care"},
-    {"name": "DotHouse Health", "lat": 42.3080, "lon": -71.0580, "type": "General Practice"},
-    {"name": "Mass General Hospital", "lat": 42.3620, "lon": -71.0690, "type": "Hospital / ER"},
-    {"name": "Dimock Center", "lat": 42.3180, "lon": -71.0980, "type": "Mental Health"},
-    {"name": "Fenway Health", "lat": 42.3440, "lon": -71.0910, "type": "Specialty Care"}
-]
-
-SNAP = [
-    {"name": "Stop & Shop (Dorchester)", "lat": 42.3210, "lon": -71.0650},
-    {"name": "Daily Table (Roxbury)", "lat": 42.3295, "lon": -71.0845},
-    {"name": "Tropical Foods", "lat": 42.3310, "lon": -71.0820},
-    {"name": "Market Basket (Chelsea)", "lat": 42.3950, "lon": -71.0350},
-    {"name": "Price Rite (Hyde Park)", "lat": 42.2490, "lon": -71.1250},
-    {"name": "Save-A-Lot (Mattapan)", "lat": 42.2850, "lon": -71.0720},
-    {"name": "Whole Foods (South End)", "lat": 42.3440, "lon": -71.0630}
-]
+# ── DATASET (Keep your existing data here) ─────────────────────────────────
+# ... (Medical, SNAP, and Housing lists from the previous code) ...
 
 # ── Navigation UI ──────────────────────────────────────────────────────────
 st.title("HarborHome Boston 🏘️")
-st.write("Community-Powered Resource & Housing Access Portal")
+st.caption("Secure Housing. Stable Students. Stronger Schools.")
 
-# Manual Navigation Bar
+# Navigation row using native buttons for better theme integration
 c1, c2, c3, c4 = st.columns(4)
-if c1.button("🏠 Home", use_container_width=True): ch_page("Home")
-if c2.button("🔍 Housing", use_container_width=True): ch_page("Housing")
-if c3.button("📍 Resources", use_container_width=True): ch_page("Resources")
-if c4.button("📰 News", use_container_width=True): ch_page("News")
+with c1: st.button("🏠 Home", use_container_width=True, on_click=ch_page, args=("Home",))
+with c2: st.button("🔍 Housing", use_container_width=True, on_click=ch_page, args=("Housing",))
+with c3: st.button("📍 Resources", use_container_width=True, on_click=ch_page, args=("Resources",))
+with c4: st.button("📰 News", use_container_width=True, on_click=ch_page, args=("News",))
 
 st.divider()
 
-# ── PAGE: HOME ──────────────────────────────────────────────────────────────
-if st.session_state.page == "Home":
-    st.subheader("Welcome to Your Neighborhood Hub")
-    st.write("We help Boston residents find stable housing, affordable food, and free medical care.")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown('<div class="action-box"><h2>🏠</h2><h3>Housing Search</h3><p>Find waitlist-open apartments.</p></div>', unsafe_allow_html=True)
-        if st.button("Browse Housing", use_container_width=True): ch_page("Housing")
-    with col2:
-        st.markdown('<div class="action-box"><h2>🩺</h2><h3>Medical Care</h3><p>Locate free clinics and ERs.</p></div>', unsafe_allow_html=True)
-        if st.button("Find Care", use_container_width=True): ch_page("Resources")
-    with col3:
-        st.markdown('<div class="action-box"><h2>🛒</h2><h3>Food Access</h3><p>Find stores accepting SNAP.</p></div>', unsafe_allow_html=True)
-        if st.button("Find Food", use_container_width=True): ch_page("Resources")
+# ── Updated Map Logic (Auto-Theme) ──────────────────────────────────────────
+# Inside your Housing/Resource pages, update the map tile logic:
+# m = folium.Map(location=[42.33, -71.08], zoom_start=12, tiles="OpenStreetMap") 
+# ^ "OpenStreetMap" is better for light/dark switching than "Dark Matter"
+# ── NEW RESOURCE CATEGORIES ────────────────────────────────────────────────
+WIFI_CENTERS = [
+    {"name": "Wicked Free Wi-Fi (Citywide)", "address": "Various Locations", "notes": "Public Wi-Fi across Dorchester, Roxbury, and East Boston."},
+    {"name": "BPL Outdoor Wi-Fi Pop-ups", "address": "Multiple Branches", "notes": "24/7 outdoor Wi-Fi at East Boston, Codman Sq, and more."},
+    {"name": "South End Library", "address": "685 Tremont St", "notes": "Free high-speed indoor Wi-Fi."}
+]
 
-# ── PAGE: HOUSING (Filters Restored) ────────────────────────────────────────
-elif st.session_state.page == "Housing":
-    st.subheader("Explore Affordable Housing")
-    
-    with st.expander("⚙️ Filter Listings", expanded=True):
-        f_col1, f_col2, f_col3 = st.columns(3)
-        max_r = f_col1.slider("Max Monthly Rent", 500, 2000, 1500)
-        min_b = f_col2.selectbox("Minimum Bedrooms", [1, 2, 3])
-        h_type = f_col3.multiselect("Lease Type", ["Subsidized", "Affordable", "Market Rate (Low)"], default=["Subsidized", "Affordable"])
-    
-    filtered = [h for h in HOUSING if h['rent'] <= max_r and h['beds'] >= min_b and h['type'] in h_type]
-    
-    map_col, list_col = st.columns([2, 1])
-    with map_col:
-        m1 = folium.Map(location=[42.3300, -71.0800], zoom_start=12, tiles="CartoDB dark_matter")
-        for h in filtered:
-            folium.Marker([h["lat"], h["lon"]], tooltip=h['name'], icon=folium.Icon(color="blue", icon="home")).add_to(m1)
-        st_folium(m1, height=500, use_container_width=True)
-    
-    with list_col:
-        st.write(f"**{len(filtered)} Matches Found**")
-        for h in filtered:
-            st.markdown(f"""<div class="info-card"><h4>{h['name']}</h4><p>{h['area']} • {h['beds']} Bed • ${h['rent']}/mo</p><small>{h['type']}</small></div>""", unsafe_allow_html=True)
+COMMUNITY_CENTERS = [
+    {"name": "BCYF Blackstone", "address": "South End", "notes": "Computer lab, gym, and teen center."},
+    {"name": "BCYF Paris Street", "address": "East Boston", "notes": "Fitness center, teen center, and dance studio."},
+    {"name": "BCYF Shelburne", "address": "Roxbury", "notes": "Youth and senior programming."}
+]
 
-# ── PAGE: RESOURCES (Medical + SNAP) ────────────────────────────────────────
-elif st.session_state.page == "Resources":
-    st.subheader("Health & Nutrition Resources")
-    view = st.multiselect("Show on Map", ["Medical Centers 🩺", "SNAP Retailers 🛒"], default=["Medical Centers 🩺", "SNAP Retailers 🛒"])
+# Note: Many BPL branches and BCYF centers double as Cooling Centers during heat waves.
+COOLING_CENTERS = [
+    {"name": "Central Library (Copley)", "address": "700 Boylston St", "notes": "Official cooling site with A/C and seating."},
+    {"name": "BCYF Gallivan", "address": "Mattapan", "notes": "Cooling resource for residents."},
+    {"name": "BCYF Charlestown", "address": "255 Medford St", "notes": "Indoor pool and climate-controlled space."}
+]
+if st.session_state.page == "Resources":
+    st.header("📍 Community Support Hub")
     
-    m2 = folium.Map(location=[42.3300, -71.0800], zoom_start=12, tiles="CartoDB dark_matter")
+    # Category Tabs
+    tab1, tab2, tab3 = st.tabs(["📶 Wi-Fi & Library", "🏠 Community Centers", "❄️ Cooling Centers"])
     
-    if "Medical Centers 🩺" in view:
-        for med in MEDICAL:
-            folium.Marker([med["lat"], med["lon"]], popup=med["name"], tooltip=med["type"], icon=folium.Icon(color="red", icon="plus-sign")).add_to(m2)
-    
-    if "SNAP Retailers 🛒" in view:
-        for s in SNAP:
-            folium.Marker([s["lat"], s["lon"]], popup=s["name"], icon=folium.Icon(color="orange", icon="shopping-cart")).add_to(m2)
-            
-    st_folium(m2, height=600, use_container_width=True)
+    with tab1:
+        st.subheader("Free Internet Access")
+        for item in WIFI_CENTERS:
+            st.markdown(f"""
+            <div class="info-card">
+                <h4>{item['name']}</h4>
+                <p>📍 {item['address']}</p>
+                <p>ℹ️ {item['notes']}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-# ── PAGE: NEWS ──────────────────────────────────────────────────────────────
-elif st.session_state.page == "News":
-    st.subheader("Community Bulletin")
-    st.info("**May 10:** Free Community Health Fair @ The Dimock Center")
-    st.warning("**May 12:** Deadline to apply for Fuel Assistance (LIHEAP)")
-    st.error("**Maintenance:** Water Main work in East Boston on May 15")
+    with tab2:
+        st.subheader("BCYF Neighborhood Centers")
+        for item in COMMUNITY_CENTERS:
+            st.markdown(f"""
+            <div class="info-card">
+                <h4>{item['name']}</h4>
+                <p>📍 {item['address']}</p>
+                <p>ℹ️ {item['notes']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with tab3:
+        st.info("During Heat Emergencies, these locations act as official cooling sites.")
+        for item in COOLING_CENTERS:
+            st.markdown(f"""
+            <div class="info-card" style="border-left: 5px solid #3B82F6;">
+                <h4>{item['name']}</h4>
+                <p>📍 {item['address']}</p>
+                <p>❄️ {item['notes']}</p>
+            </div>
+            """, unsafe_allow_html=True)
